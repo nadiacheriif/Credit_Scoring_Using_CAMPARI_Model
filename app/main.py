@@ -2,26 +2,28 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from app.scoring import score_client
 
-app = FastAPI(title="CAMPARI Credit Scoring API")
+app = FastAPI(title="Credit Scoring API")
+
 
 class ClientInput(BaseModel):
-    duration: float
-    credit_amount: float
-    installment_rate: int
-    age: int
-    credit_cards: int
-    dependents: int
     account_status: str
+    duration: float
     credit_history: str
     purpose: str
+    credit_amount: float
     savings: str
     employment: str
+    installment_rate: int
     personal_status: str
     guarantors: str
+    residence: int
     property: str
+    age: int
     other_installments: str
     housing: str
+    credit_cards: int
     job: str
+    dependents: int
     phone: str
     foreign_worker: str
 
@@ -29,6 +31,7 @@ class ClientInput(BaseModel):
 @app.get("/")
 def health():
     return {"status": "API running"}
+
 
 @app.post("/score")
 def score(data: ClientInput):

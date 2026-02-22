@@ -1,42 +1,42 @@
 import numpy as np
-import pandas as pd
-from app.config import model, BASE_SCORE, PDO, BEST_THRESHOLD, BUFFER
+from app.config import model, BEST_THRESHOLD, BUFFER, BASE_SCORE, PDO
 from app.preprocessing import transform_data
-from app.data_validation import validate_input
 
-factor = PDO / np.log(2)
 
-def compute_score(prob):
-    prob = np.clip(prob, 1e-6, 1 - 1e-6)
-    odds = prob / (1 - prob)
-    log_odds = np.log(odds)
-    return round(BASE_SCORE + factor * log_odds, 0)
+def calculate_score(probability: float):
 
-def make_decision(prob):
+    odds = probability / (1 - probability)
+    factor = PDO / np.log(2)
+    offset = BASE_SCORE - factor * np.log(1)
 
-    if prob >= BEST_THRESHOLD + BUFFER:
-        return "Approve"
-    elif prob <= BEST_THRESHOLD - BUFFER:
-        return "Reject"
+    score = offset - factor * np.log(odds)
+    return round(score, 0)
+
+
+def decision_logic(probability: float):
+
+    if probability >= BEST_THRESHOLD + BUFFER:
+        return "REJECT"
+
+    elif probability <= BEST_THRESHOLD - BUFFER:
+        return "APPROVE"
+
     else:
-        return "Manual Review"
+        return "MANUAL REVIEW"
 
-def score_client(input_dict):
 
-    df = pd.DataFrame([input_dict])
+def score_client(input_data: dict):
 
-    validate_input(df)
+    X = transform_data(input_data)
 
-    X_processed = transform_data(df)
+    probability = model.predict_proba(X)[0][1]
 
-    prob = model.predict_proba(X_processed)[:, 1][0]
+    decision = decision_logic(probability)
 
-    score = compute_score(prob)
-
-    decision = make_decision(prob)
+    score = calculate_score(probability)
 
     return {
-        "probability_good": float(prob),
-        "credit_score": score,
+        "probability_default": round(float(probability), 4),
+        "credit_score": int(score),
         "decision": decision
     }

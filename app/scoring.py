@@ -1,42 +1,53 @@
+import joblib
 import numpy as np
-from app.config import model, BEST_THRESHOLD, BUFFER, BASE_SCORE, PDO
 from app.preprocessing import transform_data
+from app.validation import validate_input
+
+model = joblib.load("artifacts/model.pkl")
+config = joblib.load("artifacts/scoring_config.pkl")
 
 
-def calculate_score(probability: float):
-
-    odds = probability / (1 - probability)
-    factor = PDO / np.log(2)
-    offset = BASE_SCORE - factor * np.log(1)
-
-    score = offset - factor * np.log(odds)
-    return round(score, 0)
+def calculate_score(probability):
+    odds = (1 - probability) / probability
+    score = config["BASE_SCORE"] - config["PDO"] * np.log(odds) / np.log(2)
+    return round(score)
 
 
-def decision_logic(probability: float):
+def score_client(input_data):
 
-    if probability >= BEST_THRESHOLD + BUFFER:
-        return "REJECT"
+    # =============================
+    # 1️⃣ Validate input
+    # =============================
+    errors = validate_input(input_data)
+    if errors:
+        return {"errors": errors}
 
-    elif probability <= BEST_THRESHOLD - BUFFER:
-        return "APPROVE"
-
-    else:
-        return "MANUAL REVIEW"
-
-
-def score_client(input_data: dict):
-
+    # =============================
+    # 2️⃣ Transform
+    # =============================
     X = transform_data(input_data)
 
+    # =============================
+    # 3️⃣ Predict
+    # =============================
     probability = model.predict_proba(X)[0][1]
-
-    decision = decision_logic(probability)
-
     score = calculate_score(probability)
 
+    # =============================
+    # 4️⃣ Decision logic
+    # =============================
+    threshold = config["best_threshold"]
+    buffer = config["buffer"]
+
+    if probability < threshold - buffer:
+        decision = "APPROVE"
+    elif probability > threshold + buffer:
+        decision = "REJECT"
+    else:
+        decision = "REVIEW"
+
     return {
-        "probability_default": round(float(probability), 4),
-        "credit_score": int(score),
+        "credit_score": score,
+        "probability_default": probability,
         "decision": decision
     }

@@ -40,3 +40,7 @@ def validate_input(df):
             raise ValueError(f"Invalid category in {col}: {invalid}")
 
     return True
+
+
+
+##this should be called in the API endpoint before making predictions to ensure the input data is valid.

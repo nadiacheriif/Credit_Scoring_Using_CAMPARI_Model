@@ -1,23 +1,24 @@
+import joblib
 import pandas as pd
 import scorecardpy as sc
-from app.config import bins, feature_columns
+
+bins = joblib.load("artifacts/woe_bins.pkl")
+feature_columns = joblib.load("artifacts/feature_columns.pkl")
 
 
-def transform_data(input_dict: dict) -> pd.DataFrame:
+def transform_data(input_data):
 
-    df = pd.DataFrame([input_dict])
+    df = pd.DataFrame([input_data])
 
-    # Apply WoE transformation
+    # Apply WOE transformation
     df_woe = sc.woebin_ply(df, bins)
 
-    # Ensure required columns exist
-    missing_cols = set(feature_columns) - set(df_woe.columns)
-    if missing_cols:
-        raise ValueError(
-            f"Missing required features after WOE transformation: {missing_cols}"
-        )
+    # STRICT feature alignment
+    missing = set(feature_columns) - set(df_woe.columns)
+    if missing:
+        raise ValueError(f"Missing required WOE features: {missing}")
 
-    # Keep exact training order
+    # Keep only trained features
     df_woe = df_woe[feature_columns]
 
     return df_woe
